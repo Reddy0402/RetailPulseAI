@@ -1,5 +1,5 @@
 ultralytics==8.1.0
-opencv-python==4.9.0.80
+opencv-python-headless==4.9.0.80
 shapely==2.0.3
 scikit-learn==1.4.1.post1
 requests==2.31.0

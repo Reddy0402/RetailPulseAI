@@ -9,8 +9,8 @@ ENV PYTHONUNBUFFERED 1
 ENV PYTHONPATH /app:/app/src
 
 # Install system dependencies (OpenCV headless glib support)
+# Removed libgl1-mesa-glx as we now utilize opencv-python-headless
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libgl1-mesa-glx \
     libglib2.0-0 \
     gcc \
     python3-dev \

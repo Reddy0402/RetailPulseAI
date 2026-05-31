@@ -1,7 +1,6 @@
 import os
 import time
 from pipeline import StoreIntelligencePipeline
-from src.utils.logger import logger if False else None
 
 import logging
 logging.basicConfig(level=logging.INFO)

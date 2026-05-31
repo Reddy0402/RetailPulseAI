@@ -26,7 +26,7 @@ def process_incoming_events(db: Session, telemetry_events: List[TelemetryEvent])
     for event in telemetry_events:
         try:
             # 1. Idempotency Check
-            event_id_val = str(event.event_id) if is_sqlite else event.event_id
+            event_id_val = str(event.event_id)
             exists = db.scalar(select(Event).where(Event.event_id == event_id_val))
             if exists:
                 logger.info(f"Duplicate event ignored for idempotency: {event.event_id}")
@@ -68,7 +68,7 @@ def process_incoming_events(db: Session, telemetry_events: List[TelemetryEvent])
             if not session:
                 # Construct new session state
                 session = VisitorSession(
-                    session_id=str(uuid.uuid4()) if is_sqlite else uuid.uuid4(),
+                    session_id=str(uuid.uuid4()),
                     store_id=event.store_id,
                     visitor_id=event.visitor_id,
                     start_time=event.timestamp,
@@ -87,7 +87,10 @@ def process_incoming_events(db: Session, telemetry_events: List[TelemetryEvent])
                 db.add(session)
             else:
                 # Update existing active session state
-                session.end_time = max(session.end_time, event.timestamp)
+                # Ensure timezone-naive comparison to prevent offset-naive/aware datetime errors
+                session_end = session.end_time.replace(tzinfo=None) if session.end_time and session.end_time.tzinfo else session.end_time
+                event_ts = event.timestamp.replace(tzinfo=None) if event.timestamp.tzinfo else event.timestamp
+                session.end_time = max(session_end, event_ts)
                 if event.event_type == "PURCHASE":
                     session.has_purchased = True
                 elif event.event_type == "REENTRY":
@@ -110,9 +113,9 @@ def process_incoming_events(db: Session, telemetry_events: List[TelemetryEvent])
 
             # 4. POS Transaction Matching (Dynamic Purchase Correlator)
             if event.event_type in ("ZONE_EXIT", "ZONE_DWELL") and event.zone_id == "Cash_Counter" and not session.has_purchased:
-                # Look for a POS transaction in the store matching checkout time +/- 90 seconds
-                start_window = (event.timestamp - timedelta(seconds=90)).time()
-                end_window = (event.timestamp + timedelta(seconds=90)).time()
+                # Look for a POS transaction in the store matching checkout time +/- 15 minutes (900 seconds)
+                start_window = (event.timestamp - timedelta(seconds=900)).time()
+                end_window = (event.timestamp + timedelta(seconds=900)).time()
                 
                 pos_match = db.execute(
                     text(
@@ -225,7 +228,17 @@ def get_store_metrics_data(db: Session, store_id: str) -> StoreMetrics:
 
     avg_dwell_per_zone = {r[0]: float(r[1]) / 1000.0 for r in avg_dwell_results}
 
-    cutoff = datetime.utcnow() - timedelta(seconds=60)
+    # Use virtual simulation time: find the latest event timestamp in the database
+    latest_event_time = db.scalar(
+        select(func.max(Event.timestamp))
+        .where(Event.store_id == store_id)
+    )
+    if latest_event_time:
+        latest_naive = latest_event_time.replace(tzinfo=None) if latest_event_time.tzinfo else latest_event_time
+        cutoff = latest_naive - timedelta(seconds=60)
+    else:
+        cutoff = datetime.utcnow() - timedelta(seconds=60)
+
     queue_depth = db.scalar(
         select(func.count(func.distinct(Event.visitor_id)))
         .where(and_(

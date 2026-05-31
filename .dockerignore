@@ -1,0 +1,12 @@
+.git
+.gitignore
+.pytest_cache/
+*.db
+*.xlsx
+*.pdf
+CCTV Footage-*/
+node_modules/
+dist/
+build/
+__pycache__/
+*.pyc

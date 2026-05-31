@@ -13,7 +13,13 @@ async def run_anomaly_check_rules(db: Session, store_id: str):
     Automatically persists detected anomalies and broadcasts alerts to the live dashboard.
     """
     loop = asyncio.get_event_loop()
-    now = datetime.utcnow()
+    
+    # Use virtual simulation time if historical data is ingested
+    latest_db_time = db.scalar(
+        select(func.max(Event.timestamp))
+        .where(Event.store_id == store_id)
+    )
+    now = latest_db_time.replace(tzinfo=None) if (latest_db_time and latest_db_time.tzinfo) else (latest_db_time or datetime.utcnow())
 
     # Rule 1: STALE_FEED
     cameras = ["CAM_1", "CAM_2", "CAM_3", "CAM_4", "CAM_5"]
@@ -22,7 +28,8 @@ async def run_anomaly_check_rules(db: Session, store_id: str):
             select(func.max(Event.timestamp))
             .where(and_(Event.store_id == store_id, Event.camera_id == cam))
         )
-        if latest_event_time and (now - latest_event_time) > timedelta(seconds=60):
+        latest_naive = latest_event_time.replace(tzinfo=None) if latest_event_time and latest_event_time.tzinfo else latest_event_time
+        if latest_naive and (now - latest_naive) > timedelta(seconds=60):
             active = db.scalar(
                 select(Anomaly).where(
                     and_(

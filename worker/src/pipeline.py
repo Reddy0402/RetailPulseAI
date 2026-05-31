@@ -6,7 +6,6 @@ import uuid
 import threading
 from datetime import datetime, timedelta
 from typing import Dict, List, Tuple
-from src.utils.logger import logger if False else None
 
 import logging
 logging.basicConfig(level=logging.INFO)

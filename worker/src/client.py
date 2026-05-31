@@ -1,6 +1,5 @@
 import requests
 from typing import List, Dict, Any
-from src.utils.logger import logger if False else None # Setup simple local logger if not in API
 
 import logging
 logging.basicConfig(level=logging.INFO)
@@ -27,15 +26,20 @@ class TelemetryIngestionClient:
         if not self.buffer:
             return
 
-        payload = {"events": self.buffer}
-        try:
-            url = f"{self.api_url}/events/ingest"
-            response = requests.post(url, json=payload, timeout=5.0)
-            
-            if response.status_code in (200, 201):
-                logger.info(f"Successfully ingested {len(self.buffer)} telemetry events to API.")
-                self.buffer.clear()
-            else:
-                logger.error(f"API Ingest rejected events. Status: {response.status_code}. Retaining in edge buffer.")
-        except Exception as e:
-            logger.error(f"Connection failure to central API endpoint: {e}. Retaining {len(self.buffer)} events in edge buffer.")
+        batch_size = 100
+        while self.buffer:
+            batch = self.buffer[:batch_size]
+            payload = {"events": batch}
+            try:
+                url = f"{self.api_url}/events/ingest"
+                response = requests.post(url, json=payload, timeout=10.0)
+                
+                if response.status_code in (200, 201):
+                    logger.info(f"Successfully ingested {len(batch)} telemetry events to API.")
+                    self.buffer = self.buffer[batch_size:]
+                else:
+                    logger.error(f"API Ingest rejected events. Status: {response.status_code}. Retaining in edge buffer.")
+                    break
+            except Exception as e:
+                logger.error(f"Connection failure to central API endpoint: {e}. Retaining {len(self.buffer)} events in edge buffer.")
+                break

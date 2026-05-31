@@ -19,7 +19,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy source code and data assets
 COPY src /app/src
-COPY Brigade_Bangalore_10_April_26\ \(1\)bc6219c.csv /app/Brigade_Bangalore_10_April_26\ \(1\)bc6219c.csv
+
+# Standard JSON form to perfectly copy filenames with spaces and parentheses
+COPY ["Brigade_Bangalore_10_April_26 (1)bc6219c.csv", "/app/Brigade_Bangalore_10_April_26 (1)bc6219c.csv"]
 
 EXPOSE 8000
 

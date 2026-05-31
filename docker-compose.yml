@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: store_intelligence_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: store_intelligence
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: store_intelligence_api
+    restart: always
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: store_intelligence
+      POSTGRES_PORT: 5432
+      ENVIRONMENT: production
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+    container_name: store_intelligence_dashboard
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+
+  worker:
+    build:
+      context: ./worker
+      dockerfile: Dockerfile
+    container_name: store_intelligence_worker
+    restart: always
+    environment:
+      API_URL: http://api:8000
+      STORE_ID: ST1008
+      LAYOUT_PATH: layouts/store_001.json
+      VIDEO_DIR: /app/CCTV Footage-20260529T160731Z-3-00144614ea/CCTV Footage
+    volumes:
+      - ./CCTV Footage-20260529T160731Z-3-00144614ea/CCTV Footage:/app/CCTV Footage-20260529T160731Z-3-00144614ea/CCTV Footage:ro
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
+    driver: local

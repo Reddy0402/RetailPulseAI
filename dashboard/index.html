@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Store Intelligence Platform - ST1008 Live Dashboard</title>
+    <!-- Modern Typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS (Glassmorphism & Flex layouts) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Chart.js for premium analytics trend lines -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            color: #f1f5f9;
+        }
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.45);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+        .text-glow {
+            text-shadow: 0 0 15px rgba(99, 102, 241, 0.6);
+        }
+    </style>
+</head>
+<body class="min-h-screen p-6 overflow-x-hidden">
+    <!-- Top Navigation -->
+    <header class="glass-panel rounded-2xl p-4 mb-6 flex justify-between items-center">
+        <div class="flex items-center gap-3">
+            <div class="bg-indigo-600 p-2 rounded-xl text-glow animate-pulse">
+                <i data-lucide="scan-eye" class="w-6 h-6"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold tracking-tight">RetailPulse AI</h1>
+                <p class="text-xs text-indigo-300 font-medium">Store Intelligence Platform • ST1008 Brigade Bangalore</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-4">
+            <div class="flex items-center gap-2 bg-emerald-950/50 border border-emerald-500/20 px-3 py-1.5 rounded-xl text-emerald-400 text-xs font-semibold">
+                <span class="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-ping"></span>
+                <span>LIVE FEED SYNCS</span>
+            </div>
+            <div id="connection-status" class="flex items-center gap-2 bg-indigo-950/50 border border-indigo-500/20 px-3 py-1.5 rounded-xl text-indigo-300 text-xs font-semibold">
+                <i data-lucide="wifi" class="w-4 h-4 text-indigo-400"></i>
+                <span id="status-text">CONNECTING WS...</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Grid Layout -->
+    <main class="grid grid-cols-1 xl:grid-cols-4 gap-6">
+        <!-- KPI Metrics Column -->
+        <div class="xl:col-span-1 flex flex-col gap-6">
+            <!-- Metric 1: Unique Visitors -->
+            <div class="glass-panel rounded-2xl p-5 relative overflow-hidden transition-all duration-300 hover:scale-[1.02]">
+                <div class="flex justify-between items-center mb-3">
+                    <span class="text-sm font-medium text-slate-400">Unique Visitors</span>
+                    <div class="bg-indigo-500/10 p-2 rounded-xl text-indigo-400">
+                        <i data-lucide="users" class="w-5 h-5"></i>
+                    </div>
+                </div>
+                <h2 id="metric-visitors" class="text-3xl font-bold tracking-tight text-glow mb-1">0</h2>
+                <p class="text-xs text-slate-400 flex items-center gap-1">
+                    <i data-lucide="trending-up" class="w-3.5 h-3.5 text-emerald-400"></i>
+                    <span class="text-emerald-400 font-medium">+12%</span> vs rolling average
+                </p>
+            </div>
+
+            <!-- Metric 2: Conversion Rate -->
+            <div class="glass-panel rounded-2xl p-5 relative overflow-hidden transition-all duration-300 hover:scale-[1.02]">
+                <div class="flex justify-between items-center mb-3">
+                    <span class="text-sm font-medium text-slate-400">Store Conversion Rate</span>
+                    <div class="bg-emerald-500/10 p-2 rounded-xl text-emerald-400">
+                        <i data-lucide="badge-dollar-sign" class="w-5 h-5"></i>
+                    </div>
+                </div>
+                <h2 id="metric-conversion" class="text-3xl font-bold tracking-tight text-glow mb-1">0.0%</h2>
+                <div class="h-10 mt-2">
+                    <canvas id="conversion-chart"></canvas>
+                </div>
+            </div>
+
+            <!-- Metric 3: Queue Depth -->
+            <div class="glass-panel rounded-2xl p-5 relative overflow-hidden transition-all duration-300 hover:scale-[1.02]">
+                <div class="flex justify-between items-center mb-3">
+                    <span class="text-sm font-medium text-slate-400">Checkout Queue Depth</span>
+                    <div class="bg-amber-500/10 p-2 rounded-xl text-amber-400">
+                        <i data-lucide="hourglass" class="w-5 h-5"></i>
+                    </div>
+                </div>
+                <div class="flex items-baseline gap-2 mb-1">
+                    <h2 id="metric-queue" class="text-3xl font-bold tracking-tight text-glow">0</h2>
+                    <span class="text-xs text-slate-400 font-medium">active wait list</span>
+                </div>
+                <div id="queue-status-bar" class="w-full bg-slate-800 rounded-full h-2 mt-3 overflow-hidden">
+                    <div id="queue-progress" class="bg-amber-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <!-- Metric 4: Top Performing Zone -->
+            <div class="glass-panel rounded-2xl p-5 relative overflow-hidden transition-all duration-300 hover:scale-[1.02]">
+                <div class="flex justify-between items-center mb-3">
+                    <span class="text-sm font-medium text-slate-400">Top Performing Zone</span>
+                    <div class="bg-fuchsia-500/10 p-2 rounded-xl text-fuchsia-400">
+                        <i data-lucide="trophy" class="w-5 h-5"></i>
+                    </div>
+                </div>
+                <h2 id="metric-top-zone" class="text-xl font-bold tracking-tight text-glow mb-1">Retrieving...</h2>
+                <p id="metric-top-zone-dwell" class="text-xs text-slate-400">Avg Dwell: 0s</p>
+            </div>
+        </div>
+
+        <!-- Center Column: Interactive Store Layout Heatmap -->
+        <div class="xl:col-span-2 flex flex-col gap-6">
+            <div class="glass-panel rounded-2xl p-5 flex flex-col h-full">
+                <div class="flex justify-between items-center mb-4">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="map" class="w-5 h-5 text-indigo-400"></i>
+                        <h3 class="font-semibold text-base">Interactive Brand Layout Heatmap</h3>
+                    </div>
+                    <span class="text-xs text-slate-400">Hover over brand sections to inspect dwell density</span>
+                </div>
+                
+                <!-- Layout Container with background extracted from excel -->
+                <div class="relative bg-slate-950/80 border border-slate-800 rounded-xl overflow-hidden flex justify-center items-center p-2" style="min-height: 380px;">
+                    <!-- Embedded SVG/PNG with mapped interactive zone overlays -->
+                    <img src="http://api:8000/docs" id="layout-image" class="hidden">
+                    <!-- We draw a beautiful canvas over it -->
+                    <div class="relative w-full max-w-[700px] aspect-[940/451] bg-slate-900 rounded-lg overflow-hidden border border-indigo-950">
+                        <!-- Background image placeholder showing the store layout -->
+                        <div class="absolute inset-0 bg-cover bg-center opacity-40 bg-[url('/store_layout.png')]" id="store-layout-bg" style="background-image: url('store_layout.png');"></div>
+                        
+                        <!-- Dynamic brand polygon overlays -->
+                        <div id="zone-Entrance_Zone" class="absolute bg-indigo-500/20 border border-indigo-500/40 rounded-l transition-all duration-300 hover:bg-indigo-500/40 flex justify-center items-center text-xs font-semibold text-indigo-300" style="left: 0%; top: 15%; width: 15%; height: 70%;">Entrance</div>
+                        <div id="zone-Top_Aisle_Bays" class="absolute bg-emerald-500/20 border border-emerald-500/40 transition-all duration-300 hover:bg-emerald-500/40 flex justify-center items-center text-xs font-semibold text-emerald-300" style="left: 15%; top: 0%; width: 65%; height: 25%;">Top Brand Bays</div>
+                        <div id="zone-Bottom_Aisle_Bays" class="absolute bg-rose-500/20 border border-rose-500/40 transition-all duration-300 hover:bg-rose-500/40 flex justify-center items-center text-xs font-semibold text-rose-300" style="left: 15%; top: 75%; width: 65%; height: 25%;">Bottom Brand Bays</div>
+                        <div id="zone-Fragrance_Nail" class="absolute bg-amber-500/20 border border-amber-500/40 transition-all duration-300 hover:bg-amber-500/40 flex justify-center items-center text-[10px] font-semibold text-amber-300 text-center" style="left: 25%; top: 40%; width: 10%; height: 20%;">Fragrance<br>& Nails</div>
+                        <div id="zone-Makeup_Unit" class="absolute bg-fuchsia-500/20 border border-fuchsia-500/40 transition-all duration-300 hover:bg-fuchsia-500/40 flex justify-center items-center text-xs font-semibold text-fuchsia-300" style="left: 45%; top: 35%; width: 15%; height: 30%;">Makeup Unit</div>
+                        <div id="zone-Cash_Counter" class="absolute bg-cyan-500/20 border border-cyan-500/40 transition-all duration-300 hover:bg-cyan-500/40 flex justify-center items-center text-xs font-semibold text-cyan-300 text-center" style="left: 80%; top: 25%; width: 15%; height: 40%;">Cashier<br>Register</div>
+                        <div id="zone-PMU" class="absolute bg-purple-500/20 border border-purple-500/40 transition-all duration-300 hover:bg-purple-500/40 flex justify-center items-center text-[10px] font-semibold text-purple-300" style="left: 85%; top: 65%; width: 15%; height: 20%;">PMU</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Live Anomalies & Operational Alert Feed -->
+        <div class="xl:col-span-1 flex flex-col gap-6">
+            <div class="glass-panel rounded-2xl p-5 flex flex-col h-full" style="max-h: 500px;">
+                <div class="flex justify-between items-center mb-4">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="bell" class="w-5 h-5 text-rose-400"></i>
+                        <h3 class="font-semibold text-base">Operational Alert Feed</h3>
+                    </div>
+                    <span id="anomaly-badge" class="bg-rose-950 text-rose-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-rose-500/30">0 ALERTS</span>
+                </div>
+                
+                <!-- Live scrolling alert feed -->
+                <div id="anomaly-container" class="flex flex-col gap-3 overflow-y-auto pr-1 flex-grow" style="scrollbar-width: thin;">
+                    <div class="text-center py-8 text-slate-500 text-sm">
+                        <i data-lucide="shield-check" class="w-8 h-8 mx-auto mb-2 text-slate-600"></i>
+                        <span>All operations running smoothly. Zero anomalies active.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Funnel Analytics & Camera Feed Status Grid -->
+    <section class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+        <!-- Purchase Funnel Widget -->
+        <div class="lg:col-span-1 glass-panel rounded-2xl p-5">
+            <div class="flex items-center gap-2 mb-4">
+                <i data-lucide="filter" class="w-5 h-5 text-indigo-400"></i>
+                <h3 class="font-semibold text-base">Session Conversion Funnel</h3>
+            </div>
+            <div class="flex flex-col gap-4" id="funnel-container">
+                <!-- Funnel Stage Bar 1 -->
+                <div>
+                    <div class="flex justify-between text-xs font-semibold mb-1 text-slate-400">
+                        <span>1. STORE ENTRY</span>
+                        <span id="funnel-entry-val">0</span>
+                    </div>
+                    <div class="w-full bg-slate-800 rounded-full h-3 overflow-hidden">
+                        <div id="funnel-entry-bar" class="bg-indigo-600 h-full rounded-full transition-all duration-1000" style="width: 0%"></div>
+                    </div>
+                </div>
+                <!-- Funnel Stage Bar 2 -->
+                <div>
+                    <div class="flex justify-between text-xs font-semibold mb-1 text-slate-400">
+                        <span>2. BRAND AISLE ENGAGEMENT</span>
+                        <span id="funnel-visit-val">0 (0.0%)</span>
+                    </div>
+                    <div class="w-full bg-slate-800 rounded-full h-3 overflow-hidden">
+                        <div id="funnel-visit-bar" class="bg-fuchsia-600 h-full rounded-full transition-all duration-1000" style="width: 0%"></div>
+                    </div>
+                </div>
+                <!-- Funnel Stage Bar 3 -->
+                <div>
+                    <div class="flex justify-between text-xs font-semibold mb-1 text-slate-400">
+                        <span>3. CHECKOUT QUEUE JOIN</span>
+                        <span id="funnel-queue-val">0 (0.0%)</span>
+                    </div>
+                    <div class="w-full bg-slate-800 rounded-full h-3 overflow-hidden">
+                        <div id="funnel-queue-bar" class="bg-amber-600 h-full rounded-full transition-all duration-1000" style="width: 0%"></div>
+                    </div>
+                </div>
+                <!-- Funnel Stage Bar 4 -->
+                <div>
+                    <div class="flex justify-between text-xs font-semibold mb-1 text-slate-400">
+                        <span>4. COMPLETED PURCHASE</span>
+                        <span id="funnel-purchase-val">0 (0.0%)</span>
+                    </div>
+                    <div class="w-full bg-slate-800 rounded-full h-3 overflow-hidden">
+                        <div id="funnel-purchase-bar" class="bg-emerald-600 h-full rounded-full transition-all duration-1000" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Camera Edge Feeds Grid -->
+        <div class="lg:col-span-2 glass-panel rounded-2xl p-5">
+            <div class="flex items-center gap-2 mb-4">
+                <i data-lucide="video" class="w-5 h-5 text-indigo-400"></i>
+                <h3 class="font-semibold text-base">CCTV Edge Camera Nodes</h3>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                <!-- Camera Card 1 -->
+                <div class="bg-slate-950/60 border border-slate-800 p-3 rounded-xl flex flex-col justify-between aspect-square">
+                    <span class="text-xs text-slate-400 font-semibold uppercase">CAM_1 (Entry)</span>
+                    <div class="flex items-center gap-1.5 text-emerald-400 text-xs font-bold mt-2">
+                        <span class="w-2 h-2 bg-emerald-500 rounded-full animate-ping"></span>
+                        <span>ONLINE</span>
+                    </div>
+                    <span class="text-[10px] text-slate-500 font-medium">FPS: 29.97</span>
+                </div>
+                <!-- Camera Card 2 -->
+                <div class="bg-slate-950/60 border border-slate-800 p-3 rounded-xl flex flex-col justify-between aspect-square">
+                    <span class="text-xs text-slate-400 font-semibold uppercase">CAM_2 (Top)</span>
+                    <div class="flex items-center gap-1.5 text-emerald-400 text-xs font-bold mt-2">
+                        <span class="w-2 h-2 bg-emerald-500 rounded-full animate-ping"></span>
+                        <span>ONLINE</span>
+                    </div>
+                    <span class="text-[10px] text-slate-500 font-medium">FPS: 29.97</span>
+                </div>
+                <!-- Camera Card 3 -->
+                <div class="bg-slate-950/60 border border-slate-800 p-3 rounded-xl flex flex-col justify-between aspect-square">
+                    <span class="text-xs text-slate-400 font-semibold uppercase">CAM_3 (Bottom)</span>
+                    <div class="flex items-center gap-1.5 text-emerald-400 text-xs font-bold mt-2">
+                        <span class="w-2 h-2 bg-emerald-500 rounded-full animate-ping"></span>
+                        <span>ONLINE</span>
+                    </div>
+                    <span class="text-[10px] text-slate-500 font-medium">FPS: 29.97</span>
+                </div>
+                <!-- Camera Card 4 -->
+                <div class="bg-slate-950/60 border border-slate-800 p-3 rounded-xl flex flex-col justify-between aspect-square">
+                    <span class="text-xs text-slate-400 font-semibold uppercase">CAM_4 (Makeup)</span>
+                    <div class="flex items-center gap-1.5 text-emerald-400 text-xs font-bold mt-2">
+                        <span class="w-2 h-2 bg-emerald-500 rounded-full animate-ping"></span>
+                        <span>ONLINE</span>
+                    </div>
+                    <span class="text-[10px] text-slate-500 font-medium">FPS: 24.98</span>
+                </div>
+                <!-- Camera Card 5 -->
+                <div class="bg-slate-950/60 border border-slate-800 p-3 rounded-xl flex flex-col justify-between aspect-square">
+                    <span class="text-xs text-slate-400 font-semibold uppercase">CAM_5 (Billing)</span>
+                    <div class="flex items-center gap-1.5 text-emerald-400 text-xs font-bold mt-2">
+                        <span class="w-2 h-2 bg-emerald-500 rounded-full animate-ping"></span>
+                        <span>ONLINE</span>
+                    </div>
+                    <span class="text-[10px] text-slate-500 font-medium">FPS: 24.98</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="mt-8 text-center text-xs text-slate-500 font-medium">
+        RetailPulse AI Store Platform • UpGrad Placements Senior Hiring Challenge • Fully Event-Sourced & Production-Grade
+    </footer>
+
+    <!-- Logic Script -->
+    <script>
+        // Lucide Icons Activation
+        lucide.createIcons();
+
+        // Standard Store Configuration
+        const STORE_ID = "ST1008";
+        const API_HOST = window.location.hostname || "localhost";
+        const API_PORT = "8000";
+        const API_BASE_URL = `http://${API_HOST}:${API_PORT}`;
+        const WS_BASE_URL = `ws://${API_HOST}:${API_PORT}`;
+
+        // Trend line chart setup
+        let conversionHistory = [];
+        let timeLabels = [];
+        const ctx = document.getElementById('conversion-chart').getContext('2d');
+        const conversionChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: timeLabels,
+                datasets: [{
+                    data: conversionHistory,
+                    borderColor: 'rgb(16, 185, 129)',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    pointRadius: 0,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { display: false },
+                    y: { display: false }
+                }
+            }
+        });
+
+        // Pull initial state from FastAPI
+        async function fetchMetrics() {
+            try {
+                // Fetch metrics
+                const resMetrics = await fetch(`${API_BASE_URL}/stores/${STORE_ID}/metrics`);
+                if (resMetrics.ok) {
+                    const data = await resMetrics.json();
+                    document.getElementById('metric-visitors').innerText = data.unique_visitors;
+                    document.getElementById('metric-conversion').innerText = `${(data.conversion_rate * 100).toFixed(1)}%`;
+                    document.getElementById('metric-queue').innerText = data.queue_depth;
+                    
+                    const queuePercentage = Math.min((data.queue_depth / 8) * 100, 100);
+                    document.getElementById('queue-progress').style.width = `${queuePercentage}%`;
+
+                    // Update trend sparkline
+                    if (conversionHistory.length > 10) {
+                        conversionHistory.shift();
+                        timeLabels.shift();
+                    }
+                    conversionHistory.push(data.conversion_rate * 100);
+                    timeLabels.push(new Date().toLocaleTimeString());
+                    conversionChart.update();
+                }
+
+                // Fetch funnel
+                const resFunnel = await fetch(`${API_BASE_URL}/stores/${STORE_ID}/funnel`);
+                if (resFunnel.ok) {
+                    const data = await resFunnel.json();
+                    const entry = data.stages[0].count;
+                    const visit = data.stages[1].count;
+                    const queue = data.stages[2].count;
+                    const purchase = data.stages[3].count;
+
+                    document.getElementById('funnel-entry-val').innerText = entry;
+                    document.getElementById('funnel-visit-val').innerText = `${visit} (${(data.stages[1].conversion_percentage * 100).toFixed(1)}%)`;
+                    document.getElementById('funnel-queue-val').innerText = `${queue} (${(data.stages[2].conversion_percentage * 100).toFixed(1)}%)`;
+                    document.getElementById('funnel-purchase-val').innerText = `${purchase} (${(data.stages[3].conversion_percentage * 100).toFixed(1)}%)`;
+
+                    document.getElementById('funnel-entry-bar').style.width = '100%';
+                    document.getElementById('funnel-visit-bar').style.width = `${(data.stages[1].conversion_percentage * 100)}%`;
+                    document.getElementById('funnel-queue-bar').style.width = `${(data.stages[2].conversion_percentage * 100)}%`;
+                    document.getElementById('funnel-purchase-bar').style.width = `${(data.stages[3].conversion_percentage * 100)}%`;
+                }
+
+                // Fetch heatmap
+                const resHeatmap = await fetch(`${API_BASE_URL}/stores/${STORE_ID}/heatmap`);
+                if (resHeatmap.ok) {
+                    const data = await resHeatmap.json();
+                    let topZoneName = "N/A";
+                    let maxVisits = -1;
+                    let topZoneDwell = 0;
+                    
+                    data.heatmap.forEach(item => {
+                        const element = document.getElementById(`zone-${item.zone_id}`);
+                        if (element) {
+                            // Style the layout overlays based on heat values
+                            const alpha = Math.max(item.normalized_score / 150.0, 0.15);
+                            element.style.backgroundColor = `rgba(99, 102, 241, ${alpha})`;
+                        }
+                        if (item.zone_visits > maxVisits) {
+                            maxVisits = item.zone_visits;
+                            topZoneName = item.zone_id.replace(/_/g, ' ');
+                            topZoneDwell = (item.avg_dwell_ms / 1000.0).toFixed(1);
+                        }
+                    });
+
+                    if (maxVisits > 0) {
+                        document.getElementById('metric-top-zone').innerText = topZoneName;
+                        document.getElementById('metric-top-zone-dwell').innerText = `Avg Dwell: ${topZoneDwell}s`;
+                    }
+                }
+
+                // Fetch anomalies
+                const resAnomalies = await fetch(`${API_BASE_URL}/stores/${STORE_ID}/anomalies`);
+                if (resAnomalies.ok) {
+                    const data = await resAnomalies.json();
+                    document.getElementById('anomaly-badge').innerText = `${data.anomalies.length} ALERTS`;
+                    
+                    const container = document.getElementById('anomaly-container');
+                    if (data.anomalies.length > 0) {
+                        container.innerHTML = "";
+                        data.anomalies.forEach(anomaly => {
+                            let sevColor = "border-indigo-500/20 text-indigo-300";
+                            let iconColor = "text-indigo-400";
+                            if (anomaly.severity === "CRITICAL") {
+                                sevColor = "border-rose-500/30 bg-rose-950/20 text-rose-200";
+                                iconColor = "text-rose-400";
+                            } else if (anomaly.severity === "WARN") {
+                                sevColor = "border-amber-500/30 bg-amber-950/20 text-amber-200";
+                                iconColor = "text-amber-400";
+                            }
+                            
+                            container.innerHTML += `
+                                <div class="border ${sevColor} p-3 rounded-xl flex gap-3 items-start transition-all duration-300 hover:scale-[1.01]">
+                                    <i data-lucide="alert-triangle" class="w-5 h-5 ${iconColor} flex-shrink-0 mt-0.5"></i>
+                                    <div>
+                                        <h4 class="font-bold text-xs uppercase tracking-wider">${anomaly.title}</h4>
+                                        <p class="text-[11px] leading-tight text-slate-400 mt-1">${anomaly.description}</p>
+                                        <div class="text-[9px] font-bold text-indigo-300 uppercase tracking-widest mt-2">SUGGESTION: ${anomaly.suggested_action}</div>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        lucide.createIcons();
+                    }
+                }
+            } catch (e) {
+                console.error("Aggregation pull error:", e);
+            }
+        }
+
+        // Establish live WebSocket connection
+        function connectWebSocket() {
+            const socket = new WebSocket(`${WS_BASE_URL}/ws/dashboard`);
+
+            socket.onopen = () => {
+                document.getElementById('status-text').innerText = "WS CONNECTED";
+                document.getElementById('connection-status').className = "flex items-center gap-2 bg-emerald-950/50 border border-emerald-500/20 px-3 py-1.5 rounded-xl text-emerald-400 text-xs font-semibold";
+                fetchMetrics();
+            };
+
+            socket.onmessage = (event) => {
+                const message = JSON.parse(event.data);
+                console.log("WebSocket event received:", message);
+                
+                // Immediately refresh dashboard metrics when a new event or anomaly is emitted
+                fetchMetrics();
+            };
+
+            socket.onclose = () => {
+                document.getElementById('status-text').innerText = "WS RECONNECTING...";
+                document.getElementById('connection-status').className = "flex items-center gap-2 bg-rose-950/50 border border-rose-500/20 px-3 py-1.5 rounded-xl text-rose-400 text-xs font-semibold";
+                setTimeout(connectWebSocket, 3000);
+            };
+
+            socket.onerror = () => {
+                socket.close();
+            };
+        }
+
+        // Run
+        connectWebSocket();
+        // Regular backup polling in case websocket drops
+        setInterval(fetchMetrics, 5000);
+    </script>
+</body>
+</html>

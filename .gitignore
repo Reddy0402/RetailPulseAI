@@ -1,0 +1,58 @@
+# CCTV and Heavy Media files (Prevents GitHub size limit error)
+**/*.mp4
+**/*.avi
+**/*.mkv
+CCTV Footage-20260529T160731Z-3-00144614ea/
+
+# YOLO / ML Model Weights & Artifacts
+*.pt
+*.onnx
+yolo*.pt
+runs/
+
+# Python virtual environment and dependencies
+.venv/
+venv/
+env/
+ENV/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+
+# Node / Next.js dependencies and builds
+node_modules/
+.next/
+out/
+dist/
+.npm
+.yarn-error.log
+yarn.lock
+package-lock.json
+
+# Database data persistence
+pgdata/
+postgres_data/
+*.db
+*.sqlite
+
+# Environment variables and secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# OS and IDE files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp

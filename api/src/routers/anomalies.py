@@ -17,14 +17,6 @@ def get_store_anomalies(id: str, db: Session = Depends(get_db)):
         anomalies = db.scalars(
             select(Anomaly)
             .where(and_(Anomaly.store_id == id, Anomaly.resolved == False))
-            .order_index(Anomaly.timestamp.desc())  # Or timestamp DESC
-        ).all()
-        
-        # Fallback order if order_index not standard SQLAlchemy method
-        # We can just order normally:
-        anomalies = db.scalars(
-            select(Anomaly)
-            .where(and_(Anomaly.store_id == id, Anomaly.resolved == False))
             .order_by(Anomaly.timestamp.desc())
         ).all()
 
